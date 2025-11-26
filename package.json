@@ -9,9 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@plunk/node": "^3.0.3",
+    "@prisma/client": "^7.0.1",
     "@radix-ui/react-slot": "^1.2.4",
+    "@react-email/components": "^0.5.7",
+    "@react-email/render": "^1.4.0",
+    "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.554.0",
     "next": "16.0.4",
     "react": "19.2.0",
