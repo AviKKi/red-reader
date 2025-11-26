@@ -8,7 +8,7 @@ import { PostCard } from "@/components/post-card";
 import { useSavedPosts } from "@/hooks/use-saved-posts";
 
 export default function SavedPage() {
-    const { savedPosts } = useSavedPosts();
+    const { savedPosts, loading } = useSavedPosts();
 
     const breakpointColumnsObj = {
         default: 4,
@@ -16,6 +16,14 @@ export default function SavedPage() {
         700: 2,
         500: 1
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen p-4 bg-background flex items-center justify-center">
+                <p>Loading saved posts...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen p-4 bg-background">
