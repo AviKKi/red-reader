@@ -4,11 +4,19 @@ import { useEffect, useState, use } from "react";
 import Masonry from "react-masonry-css";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useInView } from "react-intersection-observer";
 import { PostCard } from "@/components/post-card";
 import { SavedPost } from "@/hooks/use-saved-posts";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Helper to transform Reddit raw data to our SavedPost shape
 function transformPost(child: any): SavedPost | null {
@@ -16,14 +24,18 @@ function transformPost(child: any): SavedPost | null {
     const { post_hint, is_video, url, id, title, permalink, media, preview } = data;
 
     const isImage = post_hint === "image" || url.endsWith(".jpg") || url.endsWith(".png") || url.endsWith(".gif");
-    const isVideo = is_video || post_hint === "hosted:video";
+    const isVideo = is_video || post_hint === "hosted:video" || post_hint === "rich:video";
 
     if (!isImage && !isVideo) return null;
 
     const width = preview?.images?.[0]?.source?.width;
     const height = preview?.images?.[0]?.source?.height;
     const thumbnail = preview?.images?.[0]?.source?.url?.replace(/&amp;/g, "&");
-    const videoUrl = media?.reddit_video?.fallback_url;
+
+    let videoUrl = media?.reddit_video?.fallback_url;
+    if (!videoUrl && preview?.reddit_video_preview?.fallback_url) {
+        videoUrl = preview.reddit_video_preview.fallback_url;
+    }
 
     return {
         id,
@@ -40,6 +52,12 @@ function transformPost(child: any): SavedPost | null {
 
 export default function SubredditPage({ params }: { params: Promise<{ sub: string }> }) {
     const { sub } = use(params);
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const sort = searchParams.get("sort") || "hot";
+    const timeRange = searchParams.get("t") || "day";
+
     const [posts, setPosts] = useState<SavedPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -49,7 +67,14 @@ export default function SubredditPage({ params }: { params: Promise<{ sub: strin
 
     const fetchPosts = async (nextPage?: string) => {
         try {
-            const url = nextPage ? `/api/r/${sub}?after=${nextPage}` : `/api/r/${sub}`;
+            let url = `/api/r/${sub}?sort=${sort}`;
+            if (sort === "top" || sort === "controversial") {
+                url += `&t=${timeRange}`;
+            }
+            if (nextPage) {
+                url += `&after=${nextPage}`;
+            }
+
             const res = await fetch(url);
             if (!res.ok) throw new Error("Failed to fetch");
             const data = await res.json();
@@ -67,18 +92,35 @@ export default function SubredditPage({ params }: { params: Promise<{ sub: strin
         }
     };
 
+    // Reset and fetch when sub, sort, or timeRange changes
     useEffect(() => {
         setPosts([]);
         setAfter(null);
         setLoading(true);
         fetchPosts();
-    }, [sub]);
+    }, [sub, sort, timeRange]);
 
+    // Infinite scroll
     useEffect(() => {
         if (inView && after && !loading) {
             fetchPosts(after);
         }
     }, [inView, after, loading]);
+
+    const handleSortChange = (newSort: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("sort", newSort);
+        if (newSort !== "top" && newSort !== "controversial") {
+            params.delete("t");
+        }
+        router.push(`/r/${sub}?${params.toString()}`);
+    };
+
+    const handleTimeChange = (newTime: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("t", newTime);
+        router.push(`/r/${sub}?${params.toString()}`);
+    };
 
     const breakpointColumnsObj = {
         default: 4,
@@ -100,18 +142,52 @@ export default function SubredditPage({ params }: { params: Promise<{ sub: strin
 
     return (
         <div className="min-h-screen p-4 bg-background">
-            <header className="mb-6 flex items-center justify-between sticky top-0 z-10 bg-background/80 backdrop-blur-sm py-4">
-                <div className="flex items-center gap-4">
-                    <Link href="/">
-                        <Button variant="outline" size="icon">
-                            <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                    </Link>
-                    <h1 className="text-3xl font-bold capitalize">/r/{sub}</h1>
+            <header className="mb-6 sticky top-0 z-10 bg-background/80 backdrop-blur-sm py-4 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <Link href="/">
+                            <Button variant="outline" size="icon">
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                        </Link>
+                        <h1 className="text-2xl sm:text-3xl font-bold capitalize truncate">/r/{sub}</h1>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <Select value={sort} onValueChange={handleSortChange}>
+                            <SelectTrigger className="w-[130px]">
+                                <SelectValue placeholder="Sort" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="hot">Hot</SelectItem>
+                                <SelectItem value="new">New</SelectItem>
+                                <SelectItem value="top">Top</SelectItem>
+                                <SelectItem value="controversial">Controversial</SelectItem>
+                                <SelectItem value="best">Best</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        {(sort === "top" || sort === "controversial") && (
+                            <Select value={timeRange} onValueChange={handleTimeChange}>
+                                <SelectTrigger className="w-[130px]">
+                                    <SelectValue placeholder="Time" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="hour">Now</SelectItem>
+                                    <SelectItem value="day">Today</SelectItem>
+                                    <SelectItem value="week">This Week</SelectItem>
+                                    <SelectItem value="month">This Month</SelectItem>
+                                    <SelectItem value="year">This Year</SelectItem>
+                                    <SelectItem value="all">All Time</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        )}
+
+                        <Link href="/saved" className="ml-auto sm:ml-0">
+                            <Button variant="outline">View Saved</Button>
+                        </Link>
+                    </div>
                 </div>
-                <Link href="/saved">
-                    <Button variant="outline">View Saved</Button>
-                </Link>
             </header>
 
             <Masonry

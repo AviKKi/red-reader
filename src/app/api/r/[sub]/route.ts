@@ -8,15 +8,22 @@ export async function GET(
   
   const { searchParams } = new URL(request.url);
   const after = searchParams.get("after");
+  const sort = searchParams.get("sort") || "hot";
+  const t = searchParams.get("t");
   
   if (!sub) {
     return NextResponse.json({ error: "Subreddit is required" }, { status: 400 });
   }
 
   try {
-    const url = new URL(`https://www.reddit.com/r/${sub}/.json`);
+    // Reddit API: /r/[sub]/[sort].json
+    const url = new URL(`https://www.reddit.com/r/${sub}/${sort}.json`);
+    
     if (after) {
       url.searchParams.set("after", after);
+    }
+    if (t && (sort === "top" || sort === "controversial")) {
+      url.searchParams.set("t", t);
     }
 
     const response = await fetch(url.toString(), {
