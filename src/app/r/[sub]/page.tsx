@@ -17,38 +17,9 @@ import { useInView } from "react-intersection-observer";
 import { PostCard } from "@/components/post-card";
 import { SavedPost } from "@/hooks/use-saved-posts";
 import { useRouter, useSearchParams } from "next/navigation";
+import { transformPost } from "@/lib/reddit-utils";
 
-// Helper to transform Reddit raw data to our SavedPost shape
-function transformPost(child: any): SavedPost | null {
-    const { data } = child;
-    const { post_hint, is_video, url, id, title, permalink, media, preview } = data;
 
-    const isImage = post_hint === "image" || url.endsWith(".jpg") || url.endsWith(".png") || url.endsWith(".gif");
-    const isVideo = is_video || post_hint === "hosted:video" || post_hint === "rich:video";
-
-    if (!isImage && !isVideo) return null;
-
-    const width = preview?.images?.[0]?.source?.width;
-    const height = preview?.images?.[0]?.source?.height;
-    const thumbnail = preview?.images?.[0]?.source?.url?.replace(/&amp;/g, "&");
-
-    let videoUrl = media?.reddit_video?.fallback_url;
-    if (!videoUrl && preview?.reddit_video_preview?.fallback_url) {
-        videoUrl = preview.reddit_video_preview.fallback_url;
-    }
-
-    return {
-        id,
-        title,
-        url: url.replace(/&amp;/g, "&"),
-        permalink,
-        thumbnail,
-        isVideo: !!isVideo,
-        videoUrl,
-        width,
-        height,
-    };
-}
 
 export default function SubredditPage({ params }: { params: Promise<{ sub: string }> }) {
     const { sub } = use(params);

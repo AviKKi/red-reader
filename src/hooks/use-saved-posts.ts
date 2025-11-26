@@ -13,6 +13,7 @@ export interface SavedPost {
   videoUrl?: string;
   width?: number;
   height?: number;
+  iframeUrl?: string;
 }
 
 const STORAGE_KEY = "redreader_saved";

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Heart, ExternalLink } from "lucide-react";
 import { useSavedPosts, SavedPost } from "@/hooks/use-saved-posts";
 import { cn } from "@/lib/utils";
+import { RedGifsPlayer } from "./redgifs-player";
 
 interface PostCardProps {
     post: SavedPost;
@@ -30,7 +31,14 @@ export function PostCard({ post }: PostCardProps) {
             <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <CardContent className="p-0 relative">
                     <div className="relative">
-                        {post.isVideo && post.videoUrl ? (
+                        {post.iframeUrl ? (
+                            <RedGifsPlayer
+                                iframeUrl={post.iframeUrl}
+                                thumbnail={post.thumbnail}
+                                width={post.width}
+                                height={post.height}
+                            />
+                        ) : post.isVideo && post.videoUrl ? (
                             <video
                                 controls
                                 className="w-full h-auto object-cover"
